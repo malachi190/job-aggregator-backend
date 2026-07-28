@@ -14,6 +14,7 @@ import { ConfigModule } from './config/config.module';
 @Module({
   imports: [
     ConfigModule,
+    PrismaModule,
     AuthModule,
     ProfilesModule,
     JobsModule,
@@ -21,7 +22,6 @@ import { ConfigModule } from './config/config.module';
     MatchingModule,
     ApplicationsModule,
     BillingModule,
-    PrismaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
