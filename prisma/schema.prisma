@@ -74,6 +74,7 @@ model Profile {
   role       String
   skills     String[]
   seniority  String
+  jobTitles  String[] @map("job_titles")
   location   String
   remotePref Boolean  @default(true) @map("remote_pref")
   salaryMin  Int?     @map("salary_min")
