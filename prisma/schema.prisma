@@ -1,0 +1,173 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AuthProvider {
+  CLERK
+  PASSWORD
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPLIED
+  REJECTED
+  INTERVIEW
+}
+
+enum SourceType {
+  API
+  SCRAPE
+}
+
+enum Plan {
+  FREE
+  PAID
+}
+
+model User {
+  id           String       @id @default(uuid())
+  clerkId      String?      @unique @map("clerk_id")
+  email        String       @unique
+  passwordHash String?      @map("password_hash")
+  authProvider AuthProvider @map("auth_provider")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  profile       Profile?
+  baseCvs       BaseCv[]
+  applications  Application[]
+  subscription  Subscription?
+  feedMatches   FeedMatch[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Profile {
+  id         String   @id @default(uuid())
+  userId     String   @unique @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  fullName   String   @map("full_name")
+  role       String
+  skills     String[]
+  seniority  String
+  location   String
+  remotePref Boolean  @default(true) @map("remote_pref")
+  salaryMin  Int?     @map("salary_min")
+  salaryMax  Int?     @map("salary_max")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@map("profiles")
+}
+
+model BaseCv {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id])
+  fileUrl    String   @map("file_url")
+  parsedText String?  @map("parsed_text")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("base_cvs")
+}
+
+model JobSource {
+  id     String     @id @default(uuid())
+  name   String
+  type   SourceType
+  config Json
+  jobs   Job[]
+
+  @@map("job_sources")
+}
+
+model Job {
+  id          String    @id @default(uuid())
+  sourceId    String    @map("source_id")
+  source      JobSource @relation(fields: [sourceId], references: [id])
+  externalId  String    @map("external_id")
+  title       String
+  company     String
+  description String
+  skills      String[]
+  seniority   String?
+  location    String
+  postedAt    DateTime  @map("posted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  feedMatches  FeedMatch[]
+  applications Application[]
+
+  @@unique([sourceId, externalId])
+  @@index([location])
+  @@index([seniority])
+  @@index([postedAt])
+  @@map("jobs")
+}
+
+model FeedMatch {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  jobId     String   @map("job_id")
+  job       Job      @relation(fields: [jobId], references: [id])
+  score     Float
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@map("feed_matches")
+}
+
+model Application {
+  id             String            @id @default(uuid())
+  userId         String            @map("user_id")
+  user           User              @relation(fields: [userId], references: [id])
+  jobId          String            @map("job_id")
+  job            Job               @relation(fields: [jobId], references: [id])
+  status         ApplicationStatus @default(PENDING)
+  cvDocUrl       String?           @map("cv_doc_url")
+  coverLetterUrl String?           @map("cover_letter_url")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("applications")
+}
+
+model Subscription {
+  id                      String    @id @default(uuid())
+  userId                  String    @unique @map("user_id")
+  user                    User      @relation(fields: [userId], references: [id])
+  plan                    Plan      @default(FREE)
+  tailoringUsedThisPeriod Int       @default(0) @map("tailoring_used_this_period")
+  renewsAt                DateTime? @map("renews_at")
+
+  @@map("subscriptions")
+}
