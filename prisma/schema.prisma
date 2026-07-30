@@ -35,6 +35,11 @@ enum Plan {
   PAID
 }
 
+enum JobRegion {
+  INTERNATIONAL
+  LOCAL
+}
+
 model User {
   id           String       @id @default(uuid())
   clerkId      String?      @unique @map("clerk_id")
@@ -47,7 +52,6 @@ model User {
   baseCvs       BaseCv[]
   applications  Application[]
   subscription  Subscription?
-  feedMatches   FeedMatch[]
   refreshTokens RefreshToken[]
 
   @@map("users")
@@ -99,8 +103,9 @@ model BaseCv {
 
 model JobSource {
   id     String     @id @default(uuid())
-  name   String
+  name   String     @unique
   type   SourceType
+  region JobRegion  @default(INTERNATIONAL)
   config Json
   jobs   Job[]
 
@@ -108,20 +113,24 @@ model JobSource {
 }
 
 model Job {
-  id          String    @id @default(uuid())
-  sourceId    String    @map("source_id")
-  source      JobSource @relation(fields: [sourceId], references: [id])
-  externalId  String    @map("external_id")
-  title       String
-  company     String
-  description String
-  skills      String[]
-  seniority   String?
-  location    String
-  postedAt    DateTime  @map("posted_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  sourceId       String    @map("source_id")
+  source         JobSource @relation(fields: [sourceId], references: [id])
+  externalId     String    @map("external_id")
+  title          String
+  company        String
+  description    String
+  skills         String[]
+  seniority      String?
+  location       String
+  region         JobRegion @default(INTERNATIONAL) @map("region")
+  salaryMin      Int?      @map("salary_min")
+  salaryMax      Int?      @map("salary_max")
+  employmentType String?   @map("employment_type")
+  isRemote       Boolean?  @map("is_remote")
+  postedAt       DateTime  @map("posted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  feedMatches  FeedMatch[]
   applications Application[]
 
   @@unique([sourceId, externalId])
@@ -129,20 +138,6 @@ model Job {
   @@index([seniority])
   @@index([postedAt])
   @@map("jobs")
-}
-
-model FeedMatch {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id])
-  jobId     String   @map("job_id")
-  job       Job      @relation(fields: [jobId], references: [id])
-  score     Float
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([userId, jobId])
-  @@index([userId])
-  @@map("feed_matches")
 }
 
 model Application {
