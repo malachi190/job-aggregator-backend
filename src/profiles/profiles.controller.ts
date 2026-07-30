@@ -1,14 +1,27 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { ProfilesService } from './profiles.service';
 import { User } from 'generated/prisma/client';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { FeedService } from 'src/feed/feed.service';
 
 @Controller('profiles')
 @UseGuards(AuthGuard)
 export class ProfilesController {
-  constructor(private readonly profileService: ProfilesService) {}
+  constructor(
+    private readonly profileService: ProfilesService,
+    private readonly feedService: FeedService,
+  ) {}
 
   @Get('me')
   getMyProfile(@CurrentUser() user: User) {
@@ -16,8 +29,13 @@ export class ProfilesController {
   }
 
   @Patch('me')
-  updateMyProfile(@CurrentUser() user: User, @Body() dto: UpdateProfileDto) {
-    return this.profileService.updateByUserId(user.id, dto);
+  async updateMyProfile(
+    @CurrentUser() user: User,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const profile = await this.profileService.updateByUserId(user.id, dto);
+    await this.feedService.invalidateFeedCache(user.id);
+    return profile;
   }
 
   @Delete('me')
