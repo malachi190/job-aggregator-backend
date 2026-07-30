@@ -14,6 +14,7 @@ import { EnvService } from './config/env.service';
 import { ScheduleModule } from '@nestjs/schedule';
 import { FeedModule } from './feed/feed.module';
 import { RedisModule } from './redis/redis.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { RedisModule } from './redis/redis.module';
     ScheduleModule.forRoot(),
     CrawlerModule,
     FeedModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
