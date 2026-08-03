@@ -93,8 +93,13 @@ model BaseCv {
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   user       User     @relation(fields: [userId], references: [id])
+  name       String
   fileUrl    String   @map("file_url")
+  storageKey String   @map("storage_key")
+  fileType   String?  @map("file_type")
+  fileSize   Int?     @map("file_size")
   parsedText String?  @map("parsed_text")
+  isDefault  Boolean  @default(false) @map("is_default")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([userId])

@@ -48,4 +48,24 @@ export class EnvService {
   get port(): number {
     return parseInt(this.config.PORT, 10);
   }
+
+  get r2Endpoint(): string {
+    return this.config.R2_ENDPOINT;
+  }
+
+  get r2AccessKeyId(): string {
+    return this.config.R2_ACCESS_KEY_ID;
+  }
+
+  get r2SecretAccessKey(): string {
+    return this.config.R2_SECRET_ACCESS_KEY;
+  }
+
+  get r2BucketName(): string {
+    return this.config.R2_BUCKET_NAME;
+  }
+  
+  get r2PublicUrl(): string {
+    return this.config.R2_PUBLIC_URL;
+  }
 }

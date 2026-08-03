@@ -15,6 +15,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { FeedModule } from './feed/feed.module';
 import { RedisModule } from './redis/redis.module';
 import { SearchModule } from './search/search.module';
+import { StorageModule } from './storage/storage.module';
+import { BaseCvsModule } from './base_cvs/base_cvs.module';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { SearchModule } from './search/search.module';
     CrawlerModule,
     FeedModule,
     SearchModule,
+    StorageModule,
+    BaseCvsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
