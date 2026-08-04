@@ -17,6 +17,8 @@ import { RedisModule } from './redis/redis.module';
 import { SearchModule } from './search/search.module';
 import { StorageModule } from './storage/storage.module';
 import { BaseCvsModule } from './base_cvs/base_cvs.module';
+import { AiModule } from './ai/ai.module';
+import { TailoringModule } from './tailoring/tailoring.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { BaseCvsModule } from './base_cvs/base_cvs.module';
     SearchModule,
     StorageModule,
     BaseCvsModule,
+    AiModule,
+    TailoringModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -98,7 +98,7 @@ model BaseCv {
   storageKey String   @map("storage_key")
   fileType   String?  @map("file_type")
   fileSize   Int?     @map("file_size")
-  parsedText String?  @map("parsed_text")
+  parsedData Json?    @map("parsed_data")
   isDefault  Boolean  @default(false) @map("is_default")
   createdAt  DateTime @default(now()) @map("created_at")
 
