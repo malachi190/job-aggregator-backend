@@ -25,10 +25,6 @@ export class EnvService {
     return this.config.CLERK_PUBLISHABLE_KEY;
   }
 
-  get aiProviderKey(): string {
-    return this.config.AI_PROVIDER_KEY;
-  }
-
   get jwtAccessSecret(): string {
     return this.config.JWT_ACCESS_SECRET;
   }
@@ -64,8 +60,12 @@ export class EnvService {
   get r2BucketName(): string {
     return this.config.R2_BUCKET_NAME;
   }
-  
+
   get r2PublicUrl(): string {
     return this.config.R2_PUBLIC_URL;
+  }
+
+  get geminiApiKey(): string {
+    return this.config.GEMINI_API_KEY;
   }
 }

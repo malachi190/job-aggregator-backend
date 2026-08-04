@@ -1,9 +1,14 @@
-import { Inject, Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/interfaces/storage.interface';
 import { CreateBaseCvDto } from './dto/base_cv.dto';
 import { Plan } from 'generated/prisma/enums';
-
+import { CvParserService } from './services/cv-parser.service';
 
 const FREE_TIER_BASE_CV_LIMIT = 3;
 
@@ -11,6 +16,7 @@ const FREE_TIER_BASE_CV_LIMIT = 3;
 export class BaseCvsService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly cvParser: CvParserService,
     @Inject('STORAGE_SERVICE') private readonly storage: StorageService,
   ) {}
 
@@ -40,6 +46,9 @@ export class BaseCvsService {
       );
     }
 
+    // Parse the file BEFORE uploading (we have the buffer)
+    const parsedData = await this.cvParser.parse(file.buffer, file.mimetype);
+
     const sanitized = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     const storageKey = `base-cvs/${userId}/${crypto.randomUUID()}-${sanitized}`;
 
@@ -67,6 +76,7 @@ export class BaseCvsService {
         storageKey,
         fileType: file.mimetype,
         fileSize: file.size,
+        parsedData,
         isDefault,
       },
     });

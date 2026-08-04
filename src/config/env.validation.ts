@@ -5,7 +5,6 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
   CLERK_SECRET_KEY: z.string().min(1, 'CLERK_SECRET_KEY is required'),
   CLERK_PUBLISHABLE_KEY: z.string().min(1, 'CLERK_PUBLISHABLE_KEY is required'),
-  AI_PROVIDER_KEY: z.string().min(1, 'AI_PROVIDER_KEY is required'),
   JWT_ACCESS_SECRET: z.string().min(1, 'JWT_ACCESS_SECRET is required'),
   JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET is required'),
   JWT_ACCESS_EXPIRY_SECONDS: z.string().min(1).default('900'),
@@ -16,6 +15,7 @@ const envSchema = z.object({
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_URL: z.url(),
+  GEMINI_API_KEY: z.string().min(1),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
