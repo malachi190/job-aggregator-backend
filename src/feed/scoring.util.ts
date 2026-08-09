@@ -1,5 +1,7 @@
 import { Profile, Job } from 'generated/prisma/client';
 
+export const MIN_FEED_SCORE = 0.15;
+
 export interface ScoreDetails {
   skills: number;
   title: number;
