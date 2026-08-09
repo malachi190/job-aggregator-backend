@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { calculateScore } from 'src/feed/scoring.util';
+import { calculateScore, MIN_FEED_SCORE } from 'src/feed/scoring.util';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 export interface SearchQuery {
@@ -56,13 +56,17 @@ export class SearchService {
       this.prisma.job.count({ where }),
     ]);
 
-    const scoredItems = jobs.map((job) => {
-      if (!profile) {
-        return { job, score: 0, details: null };
-      }
-      const { score, details } = calculateScore(profile, job);
-      return { job, score, details };
-    });
+    // After scoring:
+    const scoredItems = jobs
+      .map((job) => {
+        if (!profile) return { job, score: 0, details: null };
+        const { score, details } = calculateScore(profile, job);
+        return { job, score, details };
+      })
+      .filter((item) => {
+        if (!profile) return true;
+        return item.score >= MIN_FEED_SCORE;
+      });
 
     scoredItems.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
@@ -74,8 +78,8 @@ export class SearchService {
       pagination: {
         page: params.page,
         limit: safeLimit,
-        total,
-        totalPages: Math.ceil(total / safeLimit),
+        total: scoredItems.length,
+        totalPages: Math.ceil(scoredItems.length / safeLimit),
       },
     };
   }

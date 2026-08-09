@@ -19,7 +19,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { BaseCvsService } from './base_cvs.service';
 import { User } from 'generated/prisma/client';
 import { CreateBaseCvDto } from './dto/base_cv.dto';
-
+import { Throttle } from '@nestjs/throttler';
+import { RATE_LIMITS } from 'src/rate-limit/rate-limit.config';
 
 @Controller('base-cvs')
 @UseGuards(AuthGuard)
@@ -32,6 +33,7 @@ export class BaseCvsController {
   }
 
   @Post()
+  @Throttle({ upload: RATE_LIMITS.upload })
   @UseInterceptors(FileInterceptor('file'))
   async create(
     @CurrentUser() user: User,
@@ -58,6 +60,7 @@ export class BaseCvsController {
   }
 
   @Delete(':id')
+  @Throttle({ upload: RATE_LIMITS.upload })
   async remove(@CurrentUser() user: User, @Param('id') cvId: string) {
     await this.baseCvsService.delete(user.id, cvId);
   }

@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ProfilesModule } from './profiles/profiles.module';
-import { JobsModule } from './jobs/jobs.module';
 import { CrawlerModule } from './crawler/crawler.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { BillingModule } from './billing/billing.module';
@@ -19,6 +18,9 @@ import { StorageModule } from './storage/storage.module';
 import { BaseCvsModule } from './base_cvs/base_cvs.module';
 import { AiModule } from './ai/ai.module';
 import { TailoringModule } from './tailoring/tailoring.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -26,7 +28,6 @@ import { TailoringModule } from './tailoring/tailoring.module';
     PrismaModule,
     AuthModule,
     ProfilesModule,
-    JobsModule,
     RedisModule,
     ApplicationsModule,
     BillingModule,
@@ -45,6 +46,14 @@ import { TailoringModule } from './tailoring/tailoring.module';
     }),
 
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        { name: 'default', limit: 100, ttl: 60_000 },
+        { name: 'auth', limit: 5, ttl: 900_000 },
+        { name: 'tailoring', limit: 10, ttl: 3_600_000 },
+        { name: 'upload', limit: 10, ttl: 3_600_000 },
+      ],
+    }),
     CrawlerModule,
     FeedModule,
     SearchModule,
@@ -52,8 +61,15 @@ import { TailoringModule } from './tailoring/tailoring.module';
     BaseCvsModule,
     AiModule,
     TailoringModule,
+    AdminModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
