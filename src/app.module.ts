@@ -46,14 +46,14 @@ import { AdminModule } from './admin/admin.module';
     }),
 
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot({
-      throttlers: [
-        { name: 'default', limit: 100, ttl: 60_000 },
-        { name: 'auth', limit: 5, ttl: 900_000 },
-        { name: 'tailoring', limit: 10, ttl: 3_600_000 },
-        { name: 'upload', limit: 10, ttl: 3_600_000 },
-      ],
-    }),
+    // ThrottlerModule.forRoot({
+    //   throttlers: [
+    //     { name: 'default', limit: 500, ttl: 60_000 },
+    //     { name: 'auth', limit: 5, ttl: 900_000 },
+    //     { name: 'tailoring', limit: 10, ttl: 3_600_000 },
+    //     { name: 'upload', limit: 10, ttl: 3_600_000 },
+    //   ],
+    // }),
     CrawlerModule,
     FeedModule,
     SearchModule,
@@ -66,10 +66,10 @@ import { AdminModule } from './admin/admin.module';
   controllers: [AppController],
   providers: [
     AppService,
-    {
-      provide: APP_GUARD,
-      useClass: ThrottlerGuard,
-    },
+    // {
+    //   provide: APP_GUARD,
+    //   useClass: ThrottlerGuard,
+    // },
   ],
 })
 export class AppModule {}
