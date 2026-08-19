@@ -14,13 +14,13 @@ export class TailoringController {
   constructor(private readonly tailoringService: TailoringService) {}
 
   @Post('generate')
-  @Throttle({ tailoring: RATE_LIMITS.tailoring })
+  // @Throttle({ tailoring: RATE_LIMITS.tailoring })
   async generate(@CurrentUser() user: User, @Body() dto: GenerateTailoringDto) {
     return this.tailoringService.generate(user.id, dto.baseCvId, dto.jobId);
   }
 
   @Post(':sessionId/refine')
-  @Throttle({ tailoring: RATE_LIMITS.tailoring })
+  // @Throttle({ tailoring: RATE_LIMITS.tailoring })
   async refine(
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,
@@ -30,7 +30,7 @@ export class TailoringController {
   }
 
   @Post(':sessionId/accept')
-  @Throttle({ tailoring: RATE_LIMITS.tailoring })
+  // @Throttle({ tailoring: RATE_LIMITS.tailoring })
   async accept(
     @CurrentUser() user: User,
     @Param('sessionId') sessionId: string,

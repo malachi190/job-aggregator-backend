@@ -153,19 +153,25 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no prose
   }
 
   private parseJson(text: string): TailoredContent {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const jsonString = jsonMatch ? jsonMatch[0] : text;
-
-    let cleaned = jsonString
+    let cleaned = text
       .replace(/```json|```/g, '')
       .replace(/^[^\{]*/, '')
-      .replace(/[^\}]*$/, '')
       .trim();
 
+    // Remove any trailing prose after the JSON block
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (lastBrace !== -1 && lastBrace < cleaned.length - 1) {
+      cleaned = cleaned.substring(0, lastBrace + 1);
+    }
+
+    // Fix common AI JSON errors
     cleaned = cleaned
       .replace(/,\s*([}\]])/g, '$1')
       .replace(/\\(?!["\\/bfnrtu])/g, '\\\\')
       .replace(/[\x00-\x1F\x7F]/g, '');
+
+    // Attempt to repair truncated JSON by closing open structures
+    cleaned = this.repairJson(cleaned);
 
     let raw: any;
     try {
@@ -173,12 +179,39 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no prose
     } catch (err) {
       console.error(
         'Failed to parse AI JSON. Raw text:',
-        text.substring(0, 1000),
+        text.substring(0, 1500),
       );
       return this.getEmptyContent();
     }
 
     return this.normalizeContent(raw);
+  }
+
+  private repairJson(json: string): string {
+    let repaired = json;
+
+    // Close unclosed strings
+    const quoteCount = (repaired.match(/"/g) || []).length;
+    if (quoteCount % 2 !== 0) {
+      repaired += '"';
+    }
+
+    // Balance braces
+    const openBraces = (repaired.match(/\{/g) || []).length;
+    let closeBraces = (repaired.match(/\}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    let closeBrackets = (repaired.match(/\]/g) || []).length;
+
+    while (closeBraces < openBraces) {
+      repaired += '}';
+      closeBraces++;
+    }
+    while (closeBrackets < openBrackets) {
+      repaired += ']';
+      closeBrackets++;
+    }
+
+    return repaired;
   }
 
   private normalizeContent(raw: any): TailoredContent {

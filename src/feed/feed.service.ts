@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateScore, MIN_FEED_SCORE } from './scoring.util';
@@ -15,10 +15,32 @@ export class FeedService {
     private readonly prisma: PrismaService,
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
-
-  async getFeed(userId: string, page: number, limit: number) {
+  async getFeed(
+    userId: string,
+    page: number,
+    limit: number,
+    filters: {
+      remote?: boolean;
+      seniority?: string[];
+      location?: string;
+      salaryMin?: number;
+      salaryMax?: number;
+    } = {},
+  ) {
     const version = (await this.redis.get(`feed:v:${userId}`)) || '1';
-    const cacheKey = `feed:${userId}:v${version}:p${page}:l${limit}`;
+
+    // Build cache key that includes filters
+    const filterKey = [
+      filters.remote !== undefined ? `r${filters.remote}` : '',
+      filters.seniority?.length ? `s${filters.seniority.sort().join('-')}` : '',
+      filters.location ? `l${filters.location}` : '',
+      filters.salaryMin !== undefined ? `min${filters.salaryMin}` : '',
+      filters.salaryMax !== undefined ? `max${filters.salaryMax}` : '',
+    ]
+      .filter(Boolean)
+      .join(':');
+
+    const cacheKey = `feed:${userId}:v${version}:${filterKey || 'all'}:p${page}:l${limit}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
@@ -29,14 +51,45 @@ export class FeedService {
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch all active jobs from last 30 days
     const allJobs = await this.prisma.job.findMany({
       where: { postedAt: { gte: thirtyDaysAgo } },
       orderBy: { postedAt: 'desc' },
     });
 
-    // Score and filter — only keep jobs that actually match
-    const scoredItems = allJobs
+    // Apply filters BEFORE scoring
+    let filteredJobs = allJobs;
+
+    if (filters.remote !== undefined) {
+      filteredJobs = filteredJobs.filter((j) => j.isRemote === filters.remote);
+    }
+
+    if (filters.seniority && filters.seniority.length > 0) {
+      const normalized = filters.seniority.map((s) => s.toLowerCase());
+      filteredJobs = filteredJobs.filter((j) =>
+        normalized.includes(j.seniority?.toLowerCase() as string),
+      );
+    }
+    if (filters.location) {
+      const loc = filters.location.toLowerCase();
+      filteredJobs = filteredJobs.filter((j) =>
+        j.location?.toLowerCase().includes(loc),
+      );
+    }
+
+    if (filters.salaryMin !== undefined) {
+      filteredJobs = filteredJobs.filter(
+        (j) => j.salaryMax === null || j.salaryMax >= filters.salaryMin!,
+      );
+    }
+
+    if (filters.salaryMax !== undefined) {
+      filteredJobs = filteredJobs.filter(
+        (j) => j.salaryMin === null || j.salaryMin <= filters.salaryMax!,
+      );
+    }
+
+    // Score and filter by minimum score
+    const scoredItems = filteredJobs
       .map((job) => {
         if (!profile) {
           return { job, score: 0, details: null };
@@ -45,7 +98,7 @@ export class FeedService {
         return { job, score, details };
       })
       .filter((item) => {
-        if (!profile) return true; // unauthenticated/guest sees everything
+        if (!profile) return true;
         return item.score >= MIN_FEED_SCORE;
       });
 
@@ -55,7 +108,7 @@ export class FeedService {
       return b.job.postedAt.getTime() - a.job.postedAt.getTime();
     });
 
-    // Manual pagination after filtering/sorting
+    // Paginate
     const safeLimit = Math.min(limit, 50);
     const skip = (page - 1) * safeLimit;
     const paginatedItems = scoredItems.slice(skip, skip + safeLimit);
@@ -72,6 +125,19 @@ export class FeedService {
 
     await this.redis.setex(cacheKey, 300, JSON.stringify(result));
     return result;
+  }
+
+  async findOne(jobId: string) {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      include: { source: true },
+    });
+
+    if (!job) {
+      throw new NotFoundException('Job not found');
+    }
+
+    return job;
   }
 
   async invalidateFeedCache(userId: string): Promise<void> {

@@ -49,10 +49,16 @@ export class TailoringService {
     if (!profile) throw new BadRequestException('Complete your profile first');
 
     // extract text from parsed data, in cv;
+    const MAX_CV_LENGTH = 15000; // characters
     const baseCvText = this.extractTextFromParsedData(baseCv.parsedData);
+    const trimmedCv =
+      baseCvText.length > MAX_CV_LENGTH
+        ? baseCvText.substring(0, MAX_CV_LENGTH) +
+          '\n[... additional experience truncated for brevity ...]'
+        : baseCvText;
 
     const content = await this.ai.generateTailoredCv(
-      baseCvText,
+      trimmedCv,
       job.description,
       profile,
       job,
@@ -167,7 +173,7 @@ export class TailoringService {
     ]);
 
     // Create application record
-    const application = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       await tx.subscription.upsert({
         where: { userId },
         create: {
@@ -180,7 +186,7 @@ export class TailoringService {
         },
       });
 
-      return tx.application.create({
+      tx.application.create({
         data: {
           userId,
           jobId: session.jobId,
@@ -191,9 +197,22 @@ export class TailoringService {
       });
     });
 
+    // Create subscription record
+    // await this.prisma.subscription.upsert({
+    //   where: { userId },
+    //   create: {
+    //     userId,
+    //     plan: Plan.FREE,
+    //     tailoringUsedThisPeriod: 1,
+    //   },
+    //   update: {
+    //     tailoringUsedThisPeriod: { increment: 1 },
+    //   },
+    // });
+
     // Clean up session
     await this.redis.del(`tailoring:session:${sessionId}`);
 
-    return { application, cvUrl, coverLetterUrl: coverUrl };
+    return { cvUrl, coverLetterUrl: coverUrl };
   }
 }

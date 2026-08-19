@@ -33,7 +33,7 @@ export class BaseCvsController {
   }
 
   @Post()
-  @Throttle({ upload: RATE_LIMITS.upload })
+  // @Throttle({ upload: RATE_LIMITS.upload })
   @UseInterceptors(FileInterceptor('file'))
   async create(
     @CurrentUser() user: User,
@@ -60,7 +60,7 @@ export class BaseCvsController {
   }
 
   @Delete(':id')
-  @Throttle({ upload: RATE_LIMITS.upload })
+  // @Throttle({ upload: RATE_LIMITS.upload })
   async remove(@CurrentUser() user: User, @Param('id') cvId: string) {
     await this.baseCvsService.delete(user.id, cvId);
   }
