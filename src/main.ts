@@ -8,12 +8,18 @@ import { ZodValidationPipe } from 'nestjs-zod';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const env = app.get(EnvService);
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  app.enableCors({
+    origin: env.corsOrigins,
+    credentials: true,
+  });
 
   app.useGlobalPipes(new ZodValidationPipe());
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(app.get(HttpExceptionFilter));
   app.useGlobalInterceptors(new TransformInterceptor(app.get(Reflector)));
 
-  const env = app.get(EnvService)
   await app.listen(env.port ?? 8080);
 }
-bootstrap();
+void bootstrap();

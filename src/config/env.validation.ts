@@ -16,6 +16,9 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1),
   R2_PUBLIC_URL: z.url(),
   GEMINI_API_KEY: z.string().min(1),
+  ERROR_LOG_PATH: z.string().min(1).default('logs/error.log'),
+  ADMIN_EMAILS: z.string().default(''),
+  CORS_ORIGINS: z.string().default('http://localhost:3001'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

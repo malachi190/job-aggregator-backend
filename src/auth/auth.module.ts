@@ -9,6 +9,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EnvService } from 'src/config/env.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
+import { AdminGuard } from './guards/admin.guard';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { TokenCleanupService } from './services/token-cleanup.service';
     AuthGuard,
     PrismaService,
     TokenCleanupService,
+    AdminGuard,
   ],
-  exports: [AuthService, AuthGuard, JwtAuthGuard, ClerkAuthGuard],
+  exports: [AuthService, AuthGuard, JwtAuthGuard, ClerkAuthGuard, AdminGuard],
 })
 export class AuthModule {}

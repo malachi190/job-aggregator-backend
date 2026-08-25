@@ -68,4 +68,20 @@ export class EnvService {
   get geminiApiKey(): string {
     return this.config.GEMINI_API_KEY;
   }
+
+  get errorLogPath(): string {
+    return this.config.ERROR_LOG_PATH;
+  }
+
+  get adminEmails(): string[] {
+    return this.config.ADMIN_EMAILS.split(',')
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  get corsOrigins(): string[] {
+    return this.config.CORS_ORIGINS.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+  }
 }

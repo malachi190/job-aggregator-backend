@@ -1,9 +1,10 @@
 import {
   Body,
   Controller,
-  Param,
+  Headers,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -12,15 +13,12 @@ import { ResponseMessage } from 'src/common/decorators/response-message.decorato
 import { AuthGuard } from './guards/auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { type User } from 'generated/prisma/client';
-import { Throttle } from '@nestjs/throttler';
-import { RATE_LIMITS } from 'src/rate-limit/rate-limit.config';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('register')
-  // @Throttle({ auth: RATE_LIMITS.auth })
   @ResponseMessage('User created successfully')
   async register(@Body() dto: RegisterDto) {
     return await this.authService.register(
@@ -31,27 +29,33 @@ export class AuthController {
   }
 
   @Post('login')
-  // @Throttle({ auth: RATE_LIMITS.auth })
   @ResponseMessage('Login successful')
   async login(
     @Body() dto: LoginDto,
     @Query('provider') provider: string,
-    @Query('clerkId') clerkId: string,
+    @Headers('authorization') authorization?: string,
   ) {
     if (provider === 'password') {
-      return await this.authService.login(dto.email, dto.password as string);
+      if (!dto.email || !dto.password) {
+        throw new UnauthorizedException('Email and password are required');
+      }
+      return await this.authService.login(dto.email, dto.password);
     }
-    return await this.authService.findOrCreateClerkUser(clerkId, dto.email);
+    const token = authorization?.startsWith('Bearer ')
+      ? authorization.slice(7)
+      : undefined;
+    if (!token) {
+      throw new UnauthorizedException('Missing Clerk session token');
+    }
+    return this.authService.loginWithClerkToken(token);
   }
 
   @Post('refresh')
-  // @Throttle({ auth: RATE_LIMITS.auth })
   async refresh(@Body() dto: RefreshDto) {
     return await this.authService.refresh(dto.refreshToken);
   }
 
   @Post('logout')
-  // @Throttle({ auth: RATE_LIMITS.auth })
   @ResponseMessage('Logout successful')
   @UseGuards(AuthGuard)
   logout(@CurrentUser() user: User) {

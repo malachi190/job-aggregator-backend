@@ -4,17 +4,18 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { ErrorLoggerService } from '../logging/error-logger.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(HttpExceptionFilter.name);
+  constructor(private readonly logger: ErrorLoggerService) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
@@ -28,9 +29,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (!isHttpException) {
       // Unexpected errors are logged with full detail server-side,
       // but never leaked to the client as-is.
-      this.logger.error(
-        exception instanceof Error ? exception.stack : exception,
-      );
+      this.logger.log(exception, {
+        context: HttpExceptionFilter.name,
+        method: request.method,
+        path: request.originalUrl,
+        status,
+      });
     }
 
     response.status(status).json({
@@ -47,8 +51,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
       response !== null &&
       'message' in response
     ) {
-      const msg = (response as any).message;
-      return Array.isArray(msg) ? msg[0] : msg;
+      const message = response.message;
+      if (Array.isArray(message)) return String(message[0]);
+      return String(message);
     }
     return exception.message;
   }

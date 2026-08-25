@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import { JobSourceRegistry } from './registry/job-source.registry';
 import { CrawlJobPayload } from './dto/crawl-job.payload';
 
-
 @Processor('crawler')
 export class CrawlerProcessor extends WorkerHost {
   constructor(
@@ -49,6 +48,7 @@ export class CrawlerProcessor extends WorkerHost {
             title: normalized.title,
             company: normalized.company,
             description: normalized.description,
+            applyUrl: normalized.applyUrl,
             skills: normalized.skills,
             seniority: normalized.seniority,
             location: normalized.location,
@@ -63,6 +63,7 @@ export class CrawlerProcessor extends WorkerHost {
             title: normalized.title,
             company: normalized.company,
             description: normalized.description,
+            applyUrl: normalized.applyUrl,
             skills: normalized.skills,
             seniority: normalized.seniority,
             location: normalized.location,
