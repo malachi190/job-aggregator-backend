@@ -9,6 +9,7 @@ export interface NormalizedJob {
   location: string;
   salaryMin?: number;
   salaryMax?: number;
+  salaryCurrency?: string;
   employmentType?: string;
   isRemote?: boolean;
   postedAt: Date;
