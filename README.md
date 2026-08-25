@@ -6,7 +6,7 @@ NestJS API for the Crawler job-matching and CV-tailoring application.
 
 - PostgreSQL + Prisma for users, profiles, jobs, CVs, applications, and subscriptions.
 - Redis for feed caching, tailoring sessions, BullMQ, and middleware rate limits.
-- BullMQ + Nest Schedule for hourly source crawling.
+- BullMQ + Nest Schedule for six-hourly source crawling.
 - Cloudflare R2-compatible storage for uploaded and generated documents.
 - Gemini for CV and cover-letter generation/refinement.
 - Password JWT/refresh-token auth plus verified Clerk sessions.
@@ -27,6 +27,18 @@ npm run start:dev
 
 The API listens on port `8080` by default. Configure comma-separated
 `ADMIN_EMAILS` for job-source administration and manual crawler triggers.
+
+## Job sources
+
+- Remotive public API for international remote roles.
+- Jobberman Software & Data listings for Nigerian roles.
+- MyJobMag ICT listings for Nigerian roles.
+
+Every adapter applies the same title/skill allowlist before persistence, so
+non-technical roles are rejected even when a source category is overly broad.
+Source pages are retained as application URLs and displayed as attribution in
+job details. The seed removes the legacy RemoteOK source once no jobs reference
+it; after clearing old jobs, run `npx prisma db seed` again.
 
 ## Commands
 
@@ -52,4 +64,3 @@ npm run test:e2e
 ## Deferred v2 work
 
 - Stripe billing and paid-plan lifecycle.
-- Additional Nigerian job-source adapters.

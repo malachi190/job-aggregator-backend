@@ -133,6 +133,7 @@ model Job {
   region         JobRegion @default(INTERNATIONAL) @map("region")
   salaryMin      Int?      @map("salary_min")
   salaryMax      Int?      @map("salary_max")
+  salaryCurrency String?   @map("salary_currency")
   employmentType String?   @map("employment_type")
   isRemote       Boolean?  @map("is_remote")
   postedAt       DateTime  @map("posted_at")

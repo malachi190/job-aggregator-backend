@@ -1,5 +1,9 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { JobRegion, PrismaClient, SourceType } from '../generated/prisma/client';
+import {
+  JobRegion,
+  PrismaClient,
+  SourceType,
+} from '../generated/prisma/client';
 import { Pool } from 'pg';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -7,30 +11,56 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  await prisma.jobSource.upsert({
+  const remoteOk = await prisma.jobSource.findUnique({
     where: { name: 'remoteok' },
-    update: {},
-    create: {
-      name: 'remoteok',
-      type: SourceType.API,
-      region: JobRegion.INTERNATIONAL,
-      config: {
-        url: 'https://remoteok.com/api',
-      },
-    },
+    include: { _count: { select: { jobs: true } } },
   });
 
-  // TODO: Add Nigerian sources here in v1.x
-  // await prisma.jobSource.upsert({
-  //   where: { name: 'nigerian_jobs_example' },
-  //   update: {},
-  //   create: {
-  //     name: 'nigerian_jobs_example',
-  //     type: SourceType.SCRAPE,
-  //     region: JobRegion.LOCAL,
-  //     config: { url: 'https://example.com/jobs' },
-  //   },
-  // });
+  if (remoteOk?._count.jobs === 0) {
+    await prisma.jobSource.delete({ where: { id: remoteOk.id } });
+  } else if (remoteOk) {
+    console.warn(
+      `RemoteOK was not deleted because ${remoteOk._count.jobs} jobs still reference it. Clear those jobs, then run the seed again.`,
+    );
+  }
+
+  const sources = [
+    {
+      name: 'remotive',
+      type: SourceType.API,
+      region: JobRegion.INTERNATIONAL,
+      url: 'https://remotive.com/api/remote-jobs',
+    },
+    {
+      name: 'jobberman',
+      type: SourceType.SCRAPE,
+      region: JobRegion.LOCAL,
+      url: 'https://www.jobberman.com/jobs/software-data',
+    },
+    {
+      name: 'myjobmag',
+      type: SourceType.SCRAPE,
+      region: JobRegion.LOCAL,
+      url: 'https://www.myjobmag.com/jobs-by-field/information-technology',
+    },
+  ];
+
+  for (const source of sources) {
+    await prisma.jobSource.upsert({
+      where: { name: source.name },
+      update: {
+        type: source.type,
+        region: source.region,
+        config: { url: source.url },
+      },
+      create: {
+        name: source.name,
+        type: source.type,
+        region: source.region,
+        config: { url: source.url },
+      },
+    });
+  }
 }
 
 main()

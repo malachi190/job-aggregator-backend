@@ -4,7 +4,9 @@ import { CrawlerController } from './crawler.controller';
 import { CrawlerService } from './crawler.service';
 import { CrawlerProcessor } from './crawler.processor';
 import { JobSourceRegistry } from './registry/job-source.registry';
-import { RemoteOkAdapter } from './adapters/remoteok.adapter';
+import { RemotiveAdapter } from './adapters/remotive.adapter';
+import { JobbermanAdapter } from './adapters/jobberman.adapter';
+import { MyJobMagAdapter } from './adapters/myjobmag.adapter';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
@@ -19,7 +21,9 @@ import { AuthModule } from 'src/auth/auth.module';
     CrawlerService,
     CrawlerProcessor,
     JobSourceRegistry,
-    RemoteOkAdapter,
+    RemotiveAdapter,
+    JobbermanAdapter,
+    MyJobMagAdapter,
   ],
 })
 export class CrawlerModule {}

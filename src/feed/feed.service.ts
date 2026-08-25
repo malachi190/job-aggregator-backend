@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
-import { calculateScore, MIN_FEED_SCORE } from './scoring.util';
+import { calculateScore } from './scoring.util';
 
 export interface FeedItem {
   job: any;
@@ -42,7 +42,7 @@ export class FeedService {
       .filter(Boolean)
       .join(':');
 
-    const cacheKey = `feed:${userId}:v${version}:${filterKey || 'all'}:p${safePage}:l${safeLimit}`;
+    const cacheKey = `feed:all-tech-jobs:${userId}:v${version}:${filterKey || 'all'}:p${safePage}:l${safeLimit}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
@@ -90,19 +90,14 @@ export class FeedService {
       );
     }
 
-    // Score and filter by minimum score
-    const scoredItems = filteredJobs
-      .map((job) => {
-        if (!profile) {
-          return { job, score: 0, details: null };
-        }
-        const { score, details } = calculateScore(profile, job);
-        return { job, score, details };
-      })
-      .filter((item) => {
-        if (!profile) return true;
-        return item.score >= MIN_FEED_SCORE;
-      });
+    // Keep match metadata for ranking, but never exclude a job by profile score.
+    const scoredItems = filteredJobs.map((job) => {
+      if (!profile) {
+        return { job, score: 0, details: null };
+      }
+      const { score, details } = calculateScore(profile, job);
+      return { job, score, details };
+    });
 
     // Sort: score desc, then recency desc
     scoredItems.sort((a, b) => {

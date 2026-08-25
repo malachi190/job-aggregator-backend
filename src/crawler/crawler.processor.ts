@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { PrismaService } from '../prisma/prisma.service';
 import { JobSourceRegistry } from './registry/job-source.registry';
 import { CrawlJobPayload } from './dto/crawl-job.payload';
+import { deduplicateSkills, isTechJob } from './utils/job-normalization';
 
 @Processor('crawler')
 export class CrawlerProcessor extends WorkerHost {
@@ -29,9 +30,14 @@ export class CrawlerProcessor extends WorkerHost {
       throw new Error(`No adapter registered for source: ${source.name}`);
     }
 
-    const normalizedJobs = await adapter.fetchJobs(
-      source.config as Record<string, unknown>,
-    );
+    const normalizedJobs = (
+      await adapter.fetchJobs(source.config as Record<string, unknown>)
+    )
+      .filter(isTechJob)
+      .map((normalized) => ({
+        ...normalized,
+        skills: deduplicateSkills(normalized.skills),
+      }));
 
     for (const normalized of normalizedJobs) {
       try {
@@ -55,6 +61,7 @@ export class CrawlerProcessor extends WorkerHost {
             region: source.region,
             salaryMin: normalized.salaryMin,
             salaryMax: normalized.salaryMax,
+            salaryCurrency: normalized.salaryCurrency,
             employmentType: normalized.employmentType,
             isRemote: normalized.isRemote,
             postedAt: normalized.postedAt,
@@ -70,6 +77,7 @@ export class CrawlerProcessor extends WorkerHost {
             region: source.region,
             salaryMin: normalized.salaryMin,
             salaryMax: normalized.salaryMax,
+            salaryCurrency: normalized.salaryCurrency,
             employmentType: normalized.employmentType,
             isRemote: normalized.isRemote,
             postedAt: normalized.postedAt,
