@@ -62,7 +62,10 @@ export class RemotiveAdapter implements JobSourceAdapter {
       location: job.candidate_required_location || 'Worldwide',
       salaryMin: salary.salaryMin,
       salaryMax: salary.salaryMax,
-      salaryCurrency: inferSalaryCurrency(job.salary ?? ''),
+      salaryCurrency: inferSalaryCurrency(
+        job.salary ?? '',
+        job.candidate_required_location,
+      ),
       employmentType: job.job_type,
       isRemote: true,
       postedAt: job.publication_date

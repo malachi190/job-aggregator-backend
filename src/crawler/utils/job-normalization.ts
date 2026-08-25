@@ -105,12 +105,47 @@ export function parseSalary(value: string): {
   };
 }
 
-export function inferSalaryCurrency(value: string): string | undefined {
-  if (/₦|\bNGN\b/i.test(value)) return 'NGN';
-  if (/£|\bGBP\b/i.test(value)) return 'GBP';
-  if (/€|\bEUR\b/i.test(value)) return 'EUR';
-  if (/\$|\bUSD\b/i.test(value)) return 'USD';
-  return undefined;
+export function inferSalaryCurrency(
+  value: string,
+  location = '',
+  fallback = 'USD',
+): string {
+  const explicitCurrencies: Array<[RegExp, string]> = [
+    [/₦|\bNGN\b|\bNigerian naira\b/i, 'NGN'],
+    [/C\$|\bCAD\b|\bCanadian dollars?\b/i, 'CAD'],
+    [/A\$|\bAUD\b|\bAustralian dollars?\b/i, 'AUD'],
+    [/NZ\$|\bNZD\b|\bNew Zealand dollars?\b/i, 'NZD'],
+    [/S\$|\bSGD\b|\bSingapore dollars?\b/i, 'SGD'],
+    [/£|\bGBP\b|\bBritish pounds?\b/i, 'GBP'],
+    [/€|\bEUR\b|\beuros?\b/i, 'EUR'],
+    [/US\$|\bUSD\b|\bUS dollars?\b|\$/i, 'USD'],
+  ];
+  const explicit = explicitCurrencies.find(([pattern]) => pattern.test(value));
+  if (explicit) return explicit[1];
+
+  const locationCurrencies: Array<[RegExp, string]> = [
+    [/\b(?:Nigeria|Lagos|Abuja)\b/i, 'NGN'],
+    [
+      /\b(?:United Kingdom|UK|England|Scotland|Wales|Northern Ireland)\b/i,
+      'GBP',
+    ],
+    [
+      /\b(?:Europe|European Union|EU|Germany|France|Spain|Italy|Netherlands|Belgium|Portugal|Ireland|Austria|Finland|Greece)\b/i,
+      'EUR',
+    ],
+    [/\bCanada\b/i, 'CAD'],
+    [/\bAustralia\b/i, 'AUD'],
+    [/\bNew Zealand\b/i, 'NZD'],
+    [/\bSingapore\b/i, 'SGD'],
+    [/\b(?:United States|USA|US)\b/i, 'USD'],
+  ];
+  const inferred = new Set(
+    locationCurrencies
+      .filter(([pattern]) => pattern.test(location))
+      .map(([, currency]) => currency),
+  );
+
+  return inferred.size === 1 ? [...inferred][0] : fallback;
 }
 
 export function parseListingDate(value: string, now = new Date()): Date {

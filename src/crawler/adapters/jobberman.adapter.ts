@@ -4,6 +4,7 @@ import { JobSourceAdapter } from '../interfaces/job-source.adapter';
 import { NormalizedJob } from '../dto/normalized-job.dto';
 import {
   extractSkills,
+  inferSalaryCurrency,
   inferSeniority,
   isTechJob,
   normalizeWhitespace,
@@ -67,7 +68,7 @@ export class JobbermanAdapter implements JobSourceAdapter {
         location,
         salaryMin: salary.salaryMin,
         salaryMax: salary.salaryMax,
-        salaryCurrency: salary.salaryMin ? 'NGN' : undefined,
+        salaryCurrency: inferSalaryCurrency(salaryText, location, 'NGN'),
         employmentType,
         isRemote: /\bremote\b/i.test(`${location} ${description}`),
         postedAt: parseListingDate(postedText),

@@ -4,6 +4,7 @@ import { JobSourceAdapter } from '../interfaces/job-source.adapter';
 import { NormalizedJob } from '../dto/normalized-job.dto';
 import {
   extractSkills,
+  inferSalaryCurrency,
   inferSeniority,
   isTechJob,
   normalizeWhitespace,
@@ -60,7 +61,8 @@ export class MyJobMagAdapter implements JobSourceAdapter {
           .end()
           .text(),
       );
-      const salary = parseSalary(card.find('.job-salary').first().text());
+      const salaryText = card.find('.job-salary').first().text();
+      const salary = parseSalary(salaryText);
       const skills = extractSkills(title, description);
       const applyUrl = new URL(href, 'https://www.myjobmag.com').toString();
 
@@ -75,7 +77,7 @@ export class MyJobMagAdapter implements JobSourceAdapter {
         location,
         salaryMin: salary.salaryMin,
         salaryMax: salary.salaryMax,
-        salaryCurrency: salary.salaryMin ? 'NGN' : undefined,
+        salaryCurrency: inferSalaryCurrency(salaryText, location, 'NGN'),
         isRemote: /\b(?:remote|work from home)\b/i.test(
           `${title} ${description}`,
         ),

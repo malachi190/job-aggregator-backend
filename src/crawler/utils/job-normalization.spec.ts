@@ -33,6 +33,11 @@ describe('job normalization', () => {
     });
     expect(inferSalaryCurrency('NGN 250,000 - 400,000')).toBe('NGN');
     expect(inferSalaryCurrency('$175k - $190k')).toBe('USD');
+    expect(inferSalaryCurrency('€70k', 'United States')).toBe('EUR');
+    expect(inferSalaryCurrency('', 'United Kingdom')).toBe('GBP');
+    expect(inferSalaryCurrency('', 'Germany')).toBe('EUR');
+    expect(inferSalaryCurrency('', 'Europe, USA, UK')).toBe('USD');
+    expect(inferSalaryCurrency('', 'Lagos', 'NGN')).toBe('NGN');
   });
 
   it('parses relative listing dates', () => {
