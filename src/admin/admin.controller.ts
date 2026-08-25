@@ -14,39 +14,39 @@ import {
   UpdateSourceData,
 } from './services/job-source.service';
 import { AuthGuard } from 'src/auth/guards/auth.guard';
+import { AdminGuard } from 'src/auth/guards/admin.guard';
 
 @Controller('admin')
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AdminGuard)
 export class AdminController {
   constructor(private readonly jobSourceService: JobSourceService) {}
 
   @Get('/job-sources')
   async findAll() {
-    const sources = await this.jobSourceService.fetchSources();
-    return { status: true, message: 'Job sources retrieved', data: sources };
+    return this.jobSourceService.fetchSources();
   }
 
   @Get('/job-sources/:id')
   async findOne(@Param('id') id: string) {
     const source = await this.jobSourceService.findOne(id);
-    return { status: true, message: 'Job source retrieved', data: source };
+    return source;
   }
 
   @Post('/job-sources')
   async create(@Body() data: SourceData) {
     const source = await this.jobSourceService.create(data);
-    return { status: true, message: 'Job source created', data: source };
+    return source;
   }
 
   @Patch('/job-sources/:id')
   async update(@Param('id') id: string, @Body() data: UpdateSourceData) {
     const source = await this.jobSourceService.update(id, data);
-    return { status: true, message: 'Job source updated', data: source };
+    return source;
   }
 
   @Delete('/job-sources/:id')
   async remove(@Param('id') id: string) {
     await this.jobSourceService.delete(id);
-    return { status: true, message: 'Job source deleted', data: null };
+    return null;
   }
 }

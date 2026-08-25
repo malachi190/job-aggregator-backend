@@ -7,6 +7,11 @@ export interface SearchQuery {
   query: string;
   page: number;
   limit: number;
+  remote?: boolean;
+  seniority?: string[];
+  location?: string;
+  salaryMin?: number;
+  salaryMax?: number;
 }
 
 @Injectable()
@@ -33,31 +38,57 @@ export class SearchService {
     });
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const safeLimit = Math.min(params.limit, 50);
-    const skip = (params.page - 1) * safeLimit;
+    const safeLimit = Math.max(1, Math.min(params.limit, 50));
+    const safePage = Math.max(1, params.page);
+    const skip = (safePage - 1) * safeLimit;
 
-    // Build OR conditions for title search (case-insensitive)
-    const titleConditions = keywords.map((keyword) => ({
-      title: { contains: keyword, mode: 'insensitive' as const },
-    }));
+    const jobs = await this.prisma.job.findMany({
+      where: { postedAt: { gte: thirtyDaysAgo } },
+      orderBy: { postedAt: 'desc' },
+    });
 
-    const where = {
-      postedAt: { gte: thirtyDaysAgo },
-      OR: [...titleConditions, { skills: { hasSome: keywords } }],
-    };
+    const normalizedSeniorities = params.seniority?.map((value) =>
+      value.toLowerCase(),
+    );
+    const location = params.location?.trim().toLowerCase();
 
-    const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
-        where,
-        orderBy: { postedAt: 'desc' },
-        skip,
-        take: safeLimit,
-      }),
-      this.prisma.job.count({ where }),
-    ]);
+    const matchingJobs = jobs.filter((job) => {
+      const searchable = [
+        job.title,
+        job.company,
+        job.description,
+        ...job.skills,
+      ]
+        .join(' ')
+        .toLowerCase();
+      if (!keywords.every((keyword) => searchable.includes(keyword)))
+        return false;
+      if (params.remote !== undefined && job.isRemote !== params.remote)
+        return false;
+      if (
+        normalizedSeniorities?.length &&
+        !normalizedSeniorities.includes(job.seniority?.toLowerCase() ?? '')
+      )
+        return false;
+      if (location && !job.location.toLowerCase().includes(location))
+        return false;
+      if (
+        params.salaryMin !== undefined &&
+        job.salaryMax !== null &&
+        job.salaryMax < params.salaryMin
+      )
+        return false;
+      if (
+        params.salaryMax !== undefined &&
+        job.salaryMin !== null &&
+        job.salaryMin > params.salaryMax
+      )
+        return false;
+      return true;
+    });
 
     // After scoring:
-    const scoredItems = jobs
+    const scoredItems = matchingJobs
       .map((job) => {
         if (!profile) return { job, score: 0, details: null };
         const { score, details } = calculateScore(profile, job);
@@ -73,10 +104,12 @@ export class SearchService {
       return b.job.postedAt.getTime() - a.job.postedAt.getTime();
     });
 
+    const paginatedItems = scoredItems.slice(skip, skip + safeLimit);
+
     return {
-      items: scoredItems,
+      items: paginatedItems,
       pagination: {
-        page: params.page,
+        page: safePage,
         limit: safeLimit,
         total: scoredItems.length,
         totalPages: Math.ceil(scoredItems.length / safeLimit),

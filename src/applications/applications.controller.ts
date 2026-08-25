@@ -10,8 +10,12 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User, ApplicationStatus } from 'generated/prisma/client';
+import { User } from 'generated/prisma/client';
 import { ApplicationsService } from './applications.service';
+import {
+  CreateApplicationDto,
+  UpdateApplicationStatusDto,
+} from './dto/application.dto';
 
 @Controller('applications')
 @UseGuards(AuthGuard)
@@ -29,17 +33,17 @@ export class ApplicationsController {
   }
 
   @Post()
-  create(@CurrentUser() user: User, @Body('jobId') jobId: string) {
-    return this.applicationsService.create(user.id, jobId);
+  create(@CurrentUser() user: User, @Body() dto: CreateApplicationDto) {
+    return this.applicationsService.create(user.id, dto.jobId);
   }
 
   @Patch(':id/status')
   updateStatus(
     @CurrentUser() user: User,
     @Param('id') id: string,
-    @Body('status') status: ApplicationStatus,
+    @Body() dto: UpdateApplicationStatusDto,
   ) {
-    return this.applicationsService.updateStatus(user.id, id, status);
+    return this.applicationsService.updateStatus(user.id, id, dto.status);
   }
 
   @Delete(':id')

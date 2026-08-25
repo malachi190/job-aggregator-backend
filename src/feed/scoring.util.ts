@@ -27,11 +27,11 @@ export function calculateScore(profile: Profile, job: Job): ScoreResult {
   const jTitle = job.title.toLowerCase();
   const titleRaw = pTitles.some((t) => jTitle.includes(t)) ? 1 : 0;
 
-  const pSeniority = profile.seniority.toLowerCase();
-  const jSeniority = job.seniority?.toLowerCase();
+  const pSeniority = normalizeSeniority(profile.seniority);
+  const jSeniority = normalizeSeniority(job.seniority ?? '');
   let seniorityRaw = 0;
   if (pSeniority === jSeniority) seniorityRaw = 1;
-  else if (areAdjacent(pSeniority, jSeniority as string)) seniorityRaw = 0.5;
+  else if (areAdjacent(pSeniority, jSeniority)) seniorityRaw = 0.5;
 
   let locationRaw = 0;
   if (job.isRemote && profile.remotePref) locationRaw = 1;
@@ -78,4 +78,18 @@ function areAdjacent(a: string, b: string): boolean {
   const j = levels.indexOf(b);
   if (i === -1 || j === -1) return false;
   return Math.abs(i - j) === 1;
+}
+
+function normalizeSeniority(value: string): string {
+  const normalized = value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s-]+/g, ' ');
+  if (['entry', 'entry level', 'graduate', 'junior'].includes(normalized))
+    return 'junior';
+  if (['mid', 'mid level', 'intermediate'].includes(normalized)) return 'mid';
+  if (['sr', 'senior'].includes(normalized)) return 'senior';
+  if (['manager', 'lead'].includes(normalized)) return 'lead';
+  if (['executive', 'director'].includes(normalized)) return 'principal';
+  return normalized;
 }

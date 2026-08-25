@@ -8,13 +8,31 @@ import { TokenService } from './token.service';
 import * as bcrypt from 'bcrypt';
 import { AuthProvider } from 'generated/prisma/enums';
 import { type User } from 'generated/prisma/client';
+import { createClerkClient, verifyToken } from '@clerk/backend';
+import { EnvService } from 'src/config/env.service';
+
+export type PublicUser = Pick<User, 'id' | 'email' | 'createdAt'> & {
+  clerkId: string | null;
+  authProvider: 'clerk' | 'password';
+};
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private tokens: TokenService,
+    private env: EnvService,
   ) {}
+
+  private toPublicUser(user: User): PublicUser {
+    return {
+      id: user.id,
+      clerkId: user.clerkId,
+      email: user.email,
+      authProvider: user.authProvider.toLowerCase() as 'clerk' | 'password',
+      createdAt: user.createdAt,
+    };
+  }
 
   private async issueTokenPair(
     userId: string,
@@ -28,7 +46,7 @@ export class AuthService {
     email: string,
     password: string,
     fullName: string,
-  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+  ): Promise<{ user: PublicUser; accessToken: string; refreshToken: string }> {
     const exists = await this.prisma.user.findFirst({
       where: { email },
     });
@@ -60,13 +78,13 @@ export class AuthService {
 
     const { accessToken, refreshToken } = await this.issueTokenPair(user.id);
 
-    return { user, accessToken, refreshToken };
+    return { user: this.toPublicUser(user), accessToken, refreshToken };
   }
 
   async login(
     email: string,
     password: string,
-  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+  ): Promise<{ user: PublicUser; accessToken: string; refreshToken: string }> {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
@@ -79,7 +97,7 @@ export class AuthService {
 
     const { accessToken, refreshToken } = await this.issueTokenPair(user.id);
 
-    return { user, accessToken, refreshToken };
+    return { user: this.toPublicUser(user), accessToken, refreshToken };
   }
 
   async refresh(
@@ -99,7 +117,7 @@ export class AuthService {
   }
 
   async findOrCreateClerkUser(clerkId: string, email: string) {
-    let user = await this.prisma.user.findUnique({ where: { clerkId } });
+    const user = await this.prisma.user.findUnique({ where: { clerkId } });
     if (user) return user;
 
     const existingByEmail = await this.prisma.user.findUnique({
@@ -131,5 +149,33 @@ export class AuthService {
         },
       },
     });
+  }
+
+  async authenticateClerkToken(token: string): Promise<User> {
+    const verified = await verifyToken(token, {
+      secretKey: this.env.clerkSecretKey,
+    });
+
+    const clerkId = verified.sub;
+    const clerk = createClerkClient({ secretKey: this.env.clerkSecretKey });
+    const clerkUser = await clerk.users.getUser(clerkId);
+    const email =
+      clerkUser.primaryEmailAddress?.emailAddress ??
+      clerkUser.emailAddresses[0]?.emailAddress;
+
+    if (!email) {
+      throw new UnauthorizedException('Clerk account has no email address');
+    }
+
+    return this.findOrCreateClerkUser(clerkId, email);
+  }
+
+  async loginWithClerkToken(token: string) {
+    const user = await this.authenticateClerkToken(token);
+    return {
+      user: this.toPublicUser(user),
+      accessToken: token,
+      refreshToken: '',
+    };
   }
 }

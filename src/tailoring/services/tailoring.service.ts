@@ -27,6 +27,11 @@ interface TailoringSession {
   createdAt: string;
 }
 
+function parseSession(raw: string): TailoringSession {
+  const parsed: unknown = JSON.parse(raw);
+  return parsed as TailoringSession;
+}
+
 @Injectable()
 export class TailoringService {
   constructor(
@@ -38,6 +43,7 @@ export class TailoringService {
   ) {}
 
   async generate(userId: string, baseCvId: string, jobId: string) {
+    await this.assertTailoringAvailable(userId);
     const [baseCv, job, profile] = await Promise.all([
       this.prisma.baseCv.findFirst({ where: { id: baseCvId, userId } }),
       this.prisma.job.findUnique({ where: { id: jobId } }),
@@ -96,11 +102,22 @@ export class TailoringService {
     return 'No parsed text available. Use profile skills and role to infer experience.';
   }
 
+  async getSession(sessionId: string, userId: string) {
+    const raw = await this.redis.get(`tailoring:session:${sessionId}`);
+    if (!raw) throw new NotFoundException('Session expired or not found');
+    const session = parseSession(raw);
+    if (session.userId !== userId) throw new ForbiddenException();
+    const job = await this.prisma.job.findUnique({
+      where: { id: session.jobId },
+    });
+    return { sessionId, content: session.content, jobId: session.jobId, job };
+  }
+
   async refine(sessionId: string, userId: string, feedback: string) {
     const raw = await this.redis.get(`tailoring:session:${sessionId}`);
     if (!raw) throw new NotFoundException('Session expired or not found');
 
-    const session: TailoringSession = JSON.parse(raw);
+    const session = parseSession(raw);
     if (session.userId !== userId) throw new ForbiddenException();
 
     const refined = await this.ai.refineTailoredCv(session.content, feedback);
@@ -121,7 +138,7 @@ export class TailoringService {
     const raw = await this.redis.get(`tailoring:session:${sessionId}`);
     if (!raw) throw new NotFoundException('Session expired or not found');
 
-    const session: TailoringSession = JSON.parse(raw);
+    const session = parseSession(raw);
     if (session.userId !== userId) throw new ForbiddenException();
 
     if (
@@ -135,9 +152,7 @@ export class TailoringService {
     }
 
     // Billing gate
-    const subscription = await this.prisma.subscription.findUnique({
-      where: { userId },
-    });
+    const subscription = await this.getCurrentSubscription(userId);
 
     const used = subscription?.tailoringUsedThisPeriod ?? 0;
     const plan = subscription?.plan ?? Plan.FREE;
@@ -172,30 +187,49 @@ export class TailoringService {
       ),
     ]);
 
-    // Create application record
-    await this.prisma.$transaction(async (tx) => {
-      await tx.subscription.upsert({
-        where: { userId },
-        create: {
-          userId,
-          plan: Plan.FREE,
-          tailoringUsedThisPeriod: 1,
-        },
-        update: {
-          tailoringUsedThisPeriod: { increment: 1 },
-        },
-      });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.subscription.upsert({
+          where: { userId },
+          create: {
+            userId,
+            plan: Plan.FREE,
+            tailoringUsedThisPeriod: 1,
+            renewsAt: this.nextRenewalDate(),
+          },
+          update: {
+            tailoringUsedThisPeriod: { increment: 1 },
+            renewsAt: subscription?.renewsAt ?? this.nextRenewalDate(),
+          },
+        });
 
-      tx.application.create({
-        data: {
-          userId,
-          jobId: session.jobId,
-          status: 'PENDING',
-          cvDocUrl: cvUrl,
-          coverLetterUrl: coverUrl,
-        },
+        const existing = await tx.application.findFirst({
+          where: { userId, jobId: session.jobId },
+        });
+        if (existing) {
+          await tx.application.update({
+            where: { id: existing.id },
+            data: { cvDocUrl: cvUrl, coverLetterUrl: coverUrl },
+          });
+        } else {
+          await tx.application.create({
+            data: {
+              userId,
+              jobId: session.jobId,
+              status: 'PENDING',
+              cvDocUrl: cvUrl,
+              coverLetterUrl: coverUrl,
+            },
+          });
+        }
       });
-    });
+    } catch (error) {
+      await Promise.allSettled([
+        this.storage.delete(cvKey),
+        this.storage.delete(coverKey),
+      ]);
+      throw error;
+    }
 
     // Create subscription record
     // await this.prisma.subscription.upsert({
@@ -214,5 +248,39 @@ export class TailoringService {
     await this.redis.del(`tailoring:session:${sessionId}`);
 
     return { cvUrl, coverLetterUrl: coverUrl };
+  }
+
+  private nextRenewalDate(): Date {
+    const renewal = new Date();
+    renewal.setMonth(renewal.getMonth() + 1);
+    return renewal;
+  }
+
+  private async getCurrentSubscription(userId: string) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { userId },
+    });
+    if (!subscription?.renewsAt || subscription.renewsAt > new Date()) {
+      return subscription;
+    }
+    return this.prisma.subscription.update({
+      where: { userId },
+      data: {
+        tailoringUsedThisPeriod: 0,
+        renewsAt: this.nextRenewalDate(),
+      },
+    });
+  }
+
+  private async assertTailoringAvailable(userId: string): Promise<void> {
+    const subscription = await this.getCurrentSubscription(userId);
+    if (
+      (subscription?.plan ?? Plan.FREE) === Plan.FREE &&
+      (subscription?.tailoringUsedThisPeriod ?? 0) >= FREE_TAILORING_LIMIT
+    ) {
+      throw new ForbiddenException(
+        `Free tier limit reached (${FREE_TAILORING_LIMIT} tailored applications/month). Upgrade to continue.`,
+      );
+    }
   }
 }

@@ -22,6 +22,11 @@ export class SearchController {
     @Query('q') query: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query('remote') remoteRaw?: string,
+    @Query('seniority') seniorityRaw?: string | string[],
+    @Query('location') location?: string,
+    @Query('salaryMin') salaryMinRaw?: string,
+    @Query('salaryMax') salaryMaxRaw?: string,
   ) {
     if (!query || query.trim().length === 0) {
       return {
@@ -35,6 +40,16 @@ export class SearchController {
       query,
       page,
       limit,
+      remote:
+        remoteRaw === 'true' ? true : remoteRaw === 'false' ? false : undefined,
+      seniority: seniorityRaw
+        ? (Array.isArray(seniorityRaw) ? seniorityRaw : seniorityRaw.split(','))
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : undefined,
+      location,
+      salaryMin: salaryMinRaw ? parseInt(salaryMinRaw, 10) : undefined,
+      salaryMax: salaryMaxRaw ? parseInt(salaryMaxRaw, 10) : undefined,
     };
 
     const result = await this.searchService.search(queryData);

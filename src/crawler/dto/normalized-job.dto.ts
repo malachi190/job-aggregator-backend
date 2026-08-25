@@ -3,6 +3,7 @@ export interface NormalizedJob {
   title: string;
   company: string;
   description: string;
+  applyUrl?: string;
   skills: string[];
   seniority: string;
   location: string;

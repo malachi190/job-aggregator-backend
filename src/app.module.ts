@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -18,9 +18,12 @@ import { StorageModule } from './storage/storage.module';
 import { BaseCvsModule } from './base_cvs/base_cvs.module';
 import { AiModule } from './ai/ai.module';
 import { TailoringModule } from './tailoring/tailoring.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
 import { AdminModule } from './admin/admin.module';
+import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
+import { RateLimitMiddleware } from './rate-limit/rate-limit.middleware';
+import { ErrorLoggerService } from './common/logging/error-logger.service';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { SavedJobsModule } from './saved-jobs/saved-jobs.module';
 
 @Module({
   imports: [
@@ -46,14 +49,6 @@ import { AdminModule } from './admin/admin.module';
     }),
 
     ScheduleModule.forRoot(),
-    // ThrottlerModule.forRoot({
-    //   throttlers: [
-    //     { name: 'default', limit: 500, ttl: 60_000 },
-    //     { name: 'auth', limit: 5, ttl: 900_000 },
-    //     { name: 'tailoring', limit: 10, ttl: 3_600_000 },
-    //     { name: 'upload', limit: 10, ttl: 3_600_000 },
-    //   ],
-    // }),
     CrawlerModule,
     FeedModule,
     SearchModule,
@@ -62,14 +57,19 @@ import { AdminModule } from './admin/admin.module';
     AiModule,
     TailoringModule,
     AdminModule,
+    SavedJobsModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // {
-    //   provide: APP_GUARD,
-    //   useClass: ThrottlerGuard,
-    // },
+    RequestLoggerMiddleware,
+    RateLimitMiddleware,
+    ErrorLoggerService,
+    HttpExceptionFilter,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware, RateLimitMiddleware).forRoutes('*');
+  }
+}

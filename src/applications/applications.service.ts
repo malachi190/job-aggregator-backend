@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ApplicationStatus } from 'generated/prisma/enums';
 import { PrismaService } from 'src/prisma/prisma.service';
 
@@ -37,8 +33,11 @@ export class ApplicationsService {
     });
 
     if (existing) {
-      throw new ConflictException('You have already applied to this job');
+      return this.findOne(userId, existing.id);
     }
+
+    const job = await this.prisma.job.findUnique({ where: { id: jobId } });
+    if (!job) throw new NotFoundException('Job not found');
 
     return this.prisma.application.create({
       data: {

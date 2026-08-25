@@ -27,6 +27,8 @@ export class FeedService {
       salaryMax?: number;
     } = {},
   ) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, Math.min(limit, 50));
     const version = (await this.redis.get(`feed:v:${userId}`)) || '1';
 
     // Build cache key that includes filters
@@ -40,7 +42,7 @@ export class FeedService {
       .filter(Boolean)
       .join(':');
 
-    const cacheKey = `feed:${userId}:v${version}:${filterKey || 'all'}:p${page}:l${limit}`;
+    const cacheKey = `feed:${userId}:v${version}:${filterKey || 'all'}:p${safePage}:l${safeLimit}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached) return JSON.parse(cached);
@@ -109,14 +111,13 @@ export class FeedService {
     });
 
     // Paginate
-    const safeLimit = Math.min(limit, 50);
-    const skip = (page - 1) * safeLimit;
+    const skip = (safePage - 1) * safeLimit;
     const paginatedItems = scoredItems.slice(skip, skip + safeLimit);
 
     const result = {
       items: paginatedItems,
       pagination: {
-        page,
+        page: safePage,
         limit: safeLimit,
         total: scoredItems.length,
         totalPages: Math.ceil(scoredItems.length / safeLimit),

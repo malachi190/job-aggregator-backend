@@ -53,6 +53,7 @@ model User {
   applications  Application[]
   subscription  Subscription?
   refreshTokens RefreshToken[]
+  savedJobs     SavedJob[]
 
   @@map("users")
 }
@@ -125,6 +126,7 @@ model Job {
   title          String
   company        String
   description    String
+  applyUrl       String?   @map("apply_url")
   skills         String[]
   seniority      String?
   location       String
@@ -137,12 +139,26 @@ model Job {
   createdAt      DateTime  @default(now()) @map("created_at")
 
   applications Application[]
+  savedBy      SavedJob[]
 
   @@unique([sourceId, externalId])
   @@index([location])
   @@index([seniority])
   @@index([postedAt])
   @@map("jobs")
+}
+
+model SavedJob {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String   @map("job_id")
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@map("saved_jobs")
 }
 
 model Application {
