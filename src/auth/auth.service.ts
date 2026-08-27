@@ -100,16 +100,29 @@ export class AuthService {
     return { user: this.toPublicUser(user), accessToken, refreshToken };
   }
 
-  async refresh(
-    rawRefreshToken: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  async refresh(rawRefreshToken: string): Promise<{
+    user: PublicUser;
+    accessToken: string;
+    refreshToken: string;
+  }> {
     const result = await this.tokens.rotateRefreshToken(rawRefreshToken);
     if (!result) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: result.userId },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+
     const accessToken = this.tokens.generateAccessToken(result.userId);
-    return { accessToken, refreshToken: result.newRawToken };
+    return {
+      user: this.toPublicUser(user),
+      accessToken,
+      refreshToken: result.newRawToken,
+    };
   }
 
   async logout(userId: string) {
@@ -175,7 +188,6 @@ export class AuthService {
     return {
       user: this.toPublicUser(user),
       accessToken: token,
-      refreshToken: '',
     };
   }
 }

@@ -10,6 +10,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { EnvService } from 'src/config/env.service';
 import { TokenCleanupService } from './services/token-cleanup.service';
 import { AdminGuard } from './guards/admin.guard';
+import { RefreshCookieService } from './refresh-cookie.service';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { AdminGuard } from './guards/admin.guard';
     PrismaService,
     TokenCleanupService,
     AdminGuard,
+    RefreshCookieService,
   ],
   exports: [AuthService, AuthGuard, JwtAuthGuard, ClerkAuthGuard, AdminGuard],
 })
