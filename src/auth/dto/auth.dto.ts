@@ -12,10 +12,5 @@ const loginSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
-const refreshSchema = z.object({
-  refreshToken: z.string().min(1),
-});
-
 export class RegisterDto extends createZodDto(registerSchema) {}
 export class LoginDto extends createZodDto(loginSchema) {}
-export class RefreshDto extends createZodDto(refreshSchema) {}
