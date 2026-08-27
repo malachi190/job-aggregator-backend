@@ -49,6 +49,26 @@ npm test
 npm run test:e2e
 ```
 
+## Railway deployment
+
+This repository includes `railpack.json`, which pins Node.js 22, generates the
+Prisma client during the build, applies pending migrations when a deployment
+starts, and launches the compiled NestJS server.
+
+1. Create a Railway service from this repository and select the `tailoring`
+   branch.
+2. Add Railway PostgreSQL and Redis services. Set `DATABASE_URL` and
+   `REDIS_URL` from their reference variables.
+3. Copy the remaining values from `.env.example` into the API service. Set
+   `CORS_ORIGINS` to the deployed frontend origin; Railway supplies `PORT`.
+4. Generate a public domain and set the healthcheck path to `/`.
+5. Keep one API replica because this process also owns the crawler scheduler.
+6. After the first successful deployment, run `npm run db:seed` once from the
+   service shell to create the job sources.
+
+Do not commit real credentials. `ERROR_LOG_PATH` is optional on Railway because
+the CLI error log is the durable source unless a volume is attached.
+
 ## Main endpoints
 
 - `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`
